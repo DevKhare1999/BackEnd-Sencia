@@ -1,7 +1,9 @@
 flask
 openai
+requests
+beautifulsoup4
 python-dotenv
 psycopg2-binary
-requests
-beautifulsoup4 
+pyjwt
+bcrypt
 gunicorn
