@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import os
 from dotenv import load_dotenv
+import psycopg2
 
 app = Flask(__name__)
 
@@ -13,6 +14,45 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 client = openai.Client()
+
+# Database connection
+def get_db_connection():
+    return psycopg2.connect(
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT")
+    )
+
+# Fetch agents from the database
+@app.route("/agents", methods=["GET"])
+def fetch_agents():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT agent_name, prompt, image_url FROM agents")
+    agents = cur.fetchall()
+    cur.close()
+    return jsonify(agents)
+
+# Save a new agent to the database
+@app.route("/agents", methods=["POST"])
+def save_agent():
+    data = request.json
+    agent_name = data.get("agent_name")
+    prompt = data.get("prompt")
+    image_url = data.get("image_url", "image_placeholder.png")
+
+    if not agent_name or not prompt:
+        return jsonify({"error": "agent_name and prompt are required"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO agents (agent_name, prompt, image_url) VALUES (%s, %s, %s)",
+                (agent_name, prompt, image_url))
+    conn.commit()
+    cur.close()
+    return jsonify({"message": "Agent saved successfully"})
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
