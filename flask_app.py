@@ -9,6 +9,7 @@ import jwt
 import datetime
 from functools import wraps
 from bcrypt import hashpw, gensalt, checkpw
+import json
 
 app = Flask(__name__)
 
@@ -174,7 +175,7 @@ def analyze():
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a markdown text scraper, you need to create an Embed JS output with the scraped information with the schema {name: ... , price: ... , description: ... }. Scrape all the information you can to provide an Embed JS script as output that can be displayed on FrontEnd. Only output the JS script after inference, nothing more nothing less."
+                    "content": "You are a markdown text scraper, you need to scrape information to fill the schema {name: ... , price: ... , description: ... }. Make the output in the format so that json.loads on python can directly read from the output string generated."
                 },
                 {
                     "role": "user",
@@ -190,7 +191,17 @@ def analyze():
 
         response_text = openai_response.choices[0].message.content.strip()
 
-        return jsonify({"response": response_text})
+        if 'json' in response_text:
+            response_text = json.loads(response_text.split("```json")[1].split("```")[0])  # Convert to dictionary using
+        else:
+            response_text = json.loads(response_text)
+
+        # Extract the contents of the JSON
+        name = response_text.get("name")
+        price = response_text.get("price")
+        description = response_text.get("description")
+
+        return jsonify({"name": name, "price": price, "description": description})
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"Error fetching the URL: {e}"}), 500
